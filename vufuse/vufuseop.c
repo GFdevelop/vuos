@@ -26,7 +26,13 @@
 #include <stddef.h>
 #include <pthread.h>
 #include <sys/sysmacros.h>
+
+#if FUSE_USE_VERSION < 30
 #include <fuse.h>
+#else
+#include <fuse3/fuse.h>
+#endif
+
 #include <volatilestream.h>
 #include <vumodule.h>
 #include <vufuse_node.h>
@@ -52,7 +58,11 @@ static off_t vufuse_get_filesize(char *pathname) {
 	struct vu_stat buf;
 	int rv;
 	memset(&buf, 0, sizeof(struct vu_stat));
+#if FUSE_USE_VERSION < 30
 	rv	= fuse->fops.getattr(pathname, &buf);
+#else
+	rv	= fuse->fops.getattr(pathname, &buf, NULL);
+#endif
 	return (rv >= 0) ? buf.st_size : 0;
 }
 
@@ -63,7 +73,11 @@ int vu_vufuse_lstat(char *pathname, struct vu_stat *buf, int flags, int sfd, voi
 	pthread_mutex_lock(&(fc.fuse->mutex));
 
 	memset(buf, 0, sizeof(struct vu_stat));
+#if FUSE_USE_VERSION < 30
 	rv = fc.fuse->fops.getattr(pathname, buf);
+#else
+	rv = fc.fuse->fops.getattr(pathname, buf, NULL);
+#endif
 	fuse_pop_context(ofc);
 
 	pthread_mutex_unlock(&(fc.fuse->mutex));
@@ -93,7 +107,11 @@ int vu_vufuse_access(char *path, int mode, int flags) {
 	rv = fc.fuse->fops.access(path, mode);
 	if (rv == -ENOSYS) {
 		struct vu_stat buf;
+#if FUSE_USE_VERSION < 30
 		rv = fc.fuse->fops.getattr(path, &buf);
+#else
+		rv = fc.fuse->fops.getattr(path, &buf, NULL);
+#endif
 	}
 	fuse_pop_context(ofc);
 	pthread_mutex_unlock(&(fc.fuse->mutex));
@@ -208,7 +226,7 @@ int vu_vufuse_mknod (const char *pathname, mode_t mode, dev_t dev)
 			fc.fuse->fops.release(pathname, &fi);
 		} else if (rv == -ENOSYS)
 			rv = fc.fuse->fops.mknod(pathname, mode, dev);
-	} else 
+	} else
 		rv = fc.fuse->fops.mknod(pathname, mode, dev);
 	fuse_pop_context(ofc);
 	pthread_mutex_unlock(&(fc.fuse->mutex));
@@ -258,7 +276,11 @@ int vu_vufuse_chmod (const char *pathname, mode_t mode, int fd, void *fdprivate)
 	}
 
 	pthread_mutex_lock(&(fc.fuse->mutex));
+#if FUSE_USE_VERSION < 30
 	rv = fc.fuse->fops.chmod(pathname, mode);
+#else
+	rv = fc.fuse->fops.chmod(pathname, mode, NULL);
+#endif
 	fuse_pop_context(ofc);
 	pthread_mutex_unlock(&(fc.fuse->mutex));
 
@@ -282,7 +304,11 @@ int vu_vufuse_lchown (const char *pathname, uid_t owner, gid_t group,int fd, voi
 	}
 
 	pthread_mutex_lock(&(fc.fuse->mutex));
+#if FUSE_USE_VERSION < 30
 	rv = fc.fuse->fops.chown(pathname, owner, group);
+#else
+	rv = fc.fuse->fops.chown(pathname, owner, group, NULL);
+#endif
 	fuse_pop_context(ofc);
 	pthread_mutex_unlock(&(fc.fuse->mutex));
 
@@ -330,7 +356,11 @@ int vu_vufuse_truncate(const char *path, off_t length, int fd, void *fdprivate) 
 	}
 
 	pthread_mutex_lock(&(fc.fuse->mutex));
+#if FUSE_USE_VERSION < 30
 	rv = fc.fuse->fops.truncate(path, length);
+#else
+	rv = fc.fuse->fops.truncate(path, length, NULL);
+#endif
 	fuse_pop_context(ofc);
 	pthread_mutex_unlock(&(fc.fuse->mutex));
 
@@ -377,7 +407,11 @@ int vu_vufuse_open(const char *pathname, int flags, mode_t mode, void **private)
 	ofc = fuse_push_context(&fc);
 	pthread_mutex_lock(&(fc.fuse->mutex));
 
+#if FUSE_USE_VERSION < 30
 	exists_err = fc.fuse->fops.getattr(pathname, &buf); /* if 0 the file already exists.*/
+#else
+	exists_err = fc.fuse->fops.getattr(pathname, &buf, NULL); /* if 0 the file already exists.*/
+#endif
 
 	if ((flags & O_ACCMODE) != O_RDONLY && fc.fuse->mountflags & MS_RDONLY) {
 		fuse_pop_context(ofc);
@@ -408,7 +442,11 @@ int vu_vufuse_open(const char *pathname, int flags, mode_t mode, void **private)
 		}
 
 		if ((flags & O_TRUNC) && (flags & O_ACCMODE)!= O_RDONLY) {
+#if FUSE_USE_VERSION < 30
 			rv = fc.fuse->fops.truncate(pathname, 0);
+#else
+			rv = fc.fuse->fops.truncate(pathname, 0, NULL);
+#endif
 
 			printkdebug(F,"TRUNCATE path:%s flags:%x retvalue:%d",pathname,flags,rv);
 			if (rv < 0) {
@@ -700,7 +738,11 @@ static int vufuse_common_filldir(FILE *f, const char *name, unsigned char type, 
 }
 
 /* Function to add an entry in a readdir() operation */
+#if FUSE_USE_VERSION < 30
 static int vufusefillreaddir(void *buf, const char *name, const struct stat *stbuf, off_t off) {
+#else
+static int vufusefillreaddir(void *buf, const char *name, const struct stat *stbuf, off_t off, enum fuse_fill_dir_flags flags) {
+#endif
 	FILE *f = buf;
 	__ino64_t d_ino;
 	unsigned char d_type;
@@ -718,9 +760,11 @@ struct fuse_dirhandle {
 	FILE *f;
 };
 
+#if FUSE_USE_VERSION < 30
 static int vufusefilldir(fuse_dirh_t h, const char *name, int type, ino_t ino) {
 	return vufuse_common_filldir(h->f, name, type, ino);
 }
+#endif
 
 int vu_vufuse_getdents64(unsigned int fd, struct dirent64 *dirp, unsigned int count, void *fdprivate) {
 	if (fdprivate == NULL) {
@@ -739,11 +783,15 @@ int vu_vufuse_getdents64(unsigned int fd, struct dirent64 *dirp, unsigned int co
 			pthread_mutex_lock(&(fc.fuse->mutex));
 			ft->dirf = volstream_open();
 			if (fc.fuse->fops.readdir != NULL)
+#if FUSE_USE_VERSION < 30
 				rv = fc.fuse->fops.readdir(FILEPATH(ft), ft->dirf, vufusefillreaddir, 0, &ft->ffi);
 			else {
 				struct fuse_dirhandle dh = {.f = ft->dirf};
 				rv = fc.fuse->fops.getdir(FILEPATH(ft), &dh, vufusefilldir);
 			}
+#else
+				rv = fc.fuse->fops.readdir(FILEPATH(ft), ft->dirf, vufusefillreaddir, 0, &ft->ffi, 0);
+#endif
 			fuse_pop_context(ofc);
 			pthread_mutex_unlock(&(fc.fuse->mutex));
 			if (rv < 0) {
@@ -802,7 +850,11 @@ int vu_vufuse_unlink (const char *pathname) {
 	}
 
 	pthread_mutex_lock(&(fc.fuse->mutex));
+#if FUSE_USE_VERSION < 30
 	if (fc.fuse->fops.getattr(pathname, &buf) < 0) {
+#else
+	if (fc.fuse->fops.getattr(pathname, &buf, NULL) < 0) {
+#endif
 		pthread_mutex_unlock(&(fc.fuse->mutex));
 		fuse_pop_context(ofc);
 		errno = ENOENT;
@@ -810,7 +862,11 @@ int vu_vufuse_unlink (const char *pathname) {
 	}
 
 	if (fc.fuse->fuseflags & FUSE_HARDREMOVE || (hiddenpath = vufuse_node_rename(fc.fuse, pathname, NULL)) == NULL ||
+#if FUSE_USE_VERSION < 30
 			(rv = fc.fuse->fops.rename(pathname,hiddenpath)) < 0) {
+#else
+			(rv = fc.fuse->fops.rename(pathname,hiddenpath, 0)) < 0) {
+#endif
 		if (hiddenpath)
 			vufuse_node_rename(fc.fuse, hiddenpath, pathname);
 
@@ -846,20 +902,32 @@ int vu_vufuse_rename (const char *target, const char *linkpath, int flags) {
 
 	pthread_mutex_lock(&(fc.fuse->mutex));
 	if (fc.fuse->fuseflags & FUSE_HARDREMOVE || (hiddenpath = vufuse_node_rename(fc.fuse, linkpath, NULL)) == NULL ||
+#if FUSE_USE_VERSION < 30
 			fc.fuse->fops.rename(linkpath,hiddenpath) < 0) {
+#else
+			fc.fuse->fops.rename(linkpath,hiddenpath, 0) < 0) {
+#endif
 		if (hiddenpath) {
 			vufuse_node_rename(fc.fuse, hiddenpath, linkpath);
 			hiddenpath = NULL;
 		}
 	}
 
+#if FUSE_USE_VERSION < 30
 	rv = fc.fuse->fops.rename(target,linkpath);
+#else
+	rv = fc.fuse->fops.rename(target,linkpath, 0);
+#endif
 
 	if (rv >= 0)
 		vufuse_node_rename(fc.fuse, target, linkpath);
 	else if (hiddenpath) {
 		// revert the renaming to hiddenpath
-		if (fc.fuse->fops.rename(hiddenpath, linkpath) >= 0) 
+#if FUSE_USE_VERSION < 30
+		if (fc.fuse->fops.rename(hiddenpath, linkpath) >= 0)
+#else
+		if (fc.fuse->fops.rename(hiddenpath, linkpath, 0) >= 0)
+#endif
 			vufuse_node_rename(fc.fuse, hiddenpath, linkpath);
 	}
 	pthread_mutex_unlock(&(fc.fuse->mutex));

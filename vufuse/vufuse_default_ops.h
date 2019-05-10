@@ -22,7 +22,11 @@
 #ifndef VUFUSE_DEFAULT_OPS_H
 #define VUFUSE_DEFAULT_OPS_H
 
+#if FUSE_USE_VERSION < 30
 #include <fuse.h>
+#else
+#include <fuse3/fuse.h>
+#endif
 
 extern struct fuse_operations vufuse_default_ops;
 

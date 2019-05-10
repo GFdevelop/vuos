@@ -6,7 +6,11 @@
   See the file COPYING.LIB
 */
 
+#if FUSE_USE_VERSION < 30
 #include <fuse/fuse_opt.h>
+#else
+#include <fuse3/fuse_opt.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -380,4 +384,3 @@ int fuse_opt_parse(struct fuse_args *args, void *data,
 	fuse_opt_free_args(&ctx.outargs);
 	return res;
 }
-

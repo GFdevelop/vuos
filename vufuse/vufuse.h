@@ -20,10 +20,15 @@
 
 #ifndef VUFUSE_H
 #define VUFUSE_H
+
+#if FUSE_USE_VERSION < 30
 #include <fuse.h>
+#else
+#include <fuse3/fuse.h>
+#endif
 
 #ifndef VUFUSE_FUSE_VERSION
-#define VUFUSE_FUSE_VERSION 29
+#define VUFUSE_FUSE_VERSION FUSE_USE_VERSION
 #endif
 
 /** Enable hard remove */
@@ -35,21 +40,21 @@ struct fuse {
 
 	pthread_mutex_t mutex;
 
-  pthread_t thread;
-  pthread_cond_t startloop;
-  pthread_cond_t endloop;
+	pthread_t thread;
+	pthread_cond_t startloop;
+	pthread_cond_t endloop;
 
-  int inuse;
-  unsigned long mountflags;
-  unsigned long fuseflags;
+	int inuse;
+	unsigned long mountflags;
+	unsigned long fuseflags;
 	void *private_data;
 };
 
 struct fileinfo {
 	//char *path;
-  struct fuse_node *node;
-  off_t pos;        /* file offset */
-  struct fuse_file_info ffi;    /* includes open flags, file handle and page_write mode  */
+	struct fuse_node *node;
+	off_t pos;        /* file offset */
+	struct fuse_file_info ffi;    /* includes open flags, file handle and page_write mode  */
 	FILE *dirf;
 };
 

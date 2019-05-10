@@ -20,7 +20,12 @@
  *
  */
 
+#if FUSE_USE_VERSION < 30
 #include <fuse.h>
+#else
+#include <fuse3/fuse.h>
+#endif
+
 #include <errno.h>
 #include <stdio.h>
 #include <libgen.h>
@@ -28,7 +33,11 @@
 
 /* Check fuse.h for the documentation*/
 
+#if FUSE_USE_VERSION < 30
 static int vustd_getattr (const char *path, struct stat *stat)
+#else
+static int vustd_getattr (const char *path, struct stat *stat, struct fuse_file_info *fi)
+#endif
 {
 	printkdebug(F,"DEFAULT getattr %s\n", path);
 	return -ENOTSUP;
@@ -40,11 +49,13 @@ static int vustd_readlink (const char *path, char *link, size_t size)
 	return -EINVAL;
 }
 
+#if FUSE_USE_VERSION < 30
 static int vustd_getdir (const char *path, fuse_dirh_t dir, fuse_dirfil_t dirf)
 {
 	printkdebug(F,"DEFAULT getdir %s\n", path);
 	return -ENOSYS;
 }
+#endif
 
 static int vustd_mknod (const char *path, mode_t mode, dev_t dev)
 {
@@ -76,7 +87,11 @@ static int vustd_symlink (const char *path, const char *newpath)
 	return -ENOSYS;
 }
 
+#if FUSE_USE_VERSION < 30
 static int vustd_rename (const char *path, const char *newpath)
+#else
+static int vustd_rename (const char *path, const char *newpath, unsigned int flags)
+#endif
 {
 	printkdebug(F,"DEFAULT rename %s\n", path);
 	return -ENOSYS;
@@ -88,25 +103,41 @@ static int vustd_link (const char *path, const char *newpath)
 	return -ENOSYS;
 }
 
+#if FUSE_USE_VERSION < 30
 static int vustd_chmod (const char *path, mode_t mode)
+#else
+static int vustd_chmod (const char *path, mode_t mode, struct fuse_file_info *fi)
+#endif
 {
 	printkdebug(F,"DEFAULT chmod %s\n", path);
 	return -ENOSYS;
 }
 
+#if FUSE_USE_VERSION < 30
 static int vustd_chown (const char *path, uid_t uid, gid_t gid)
+#else
+static int vustd_chown (const char *path, uid_t uid, gid_t gid, struct fuse_file_info *fi)
+#endif
 {
 	printkdebug(F,"DEFAULT chown %s\n", path);
 	return -ENOSYS;
 }
 
+#if FUSE_USE_VERSION < 30
 static int vustd_truncate (const char *path, off_t off)
+#else
+static int vustd_truncate (const char *path, off_t off, struct fuse_file_info *fi)
+#endif
 {
 	printkdebug(F,"DEFAULT truncat %s\n", path);
 	return -ENOSYS;
 }
 
+#if FUSE_USE_VERSION < 30
 static int vustd_utime (const char *path, struct utimbuf *timbuf)
+#else
+static int vustd_utime (const char *path, struct utimbuf *timbuf, struct fuse_file_info *fi)
+#endif
 {
 	printkdebug(F,"DEFAULT utime %s\n", path);
 	return -ENOSYS;
@@ -136,7 +167,8 @@ static int vustd_write (const char *path, const char *buf, size_t size, off_t of
  * The 'f_frsize', 'f_favail', 'f_fsid' and 'f_flag' fields are ignored
  *
  */
-#if ( FUSE_MINOR_VERSION >= 5 )
+
+#if ( FUSE_USE_VERSION >= 25 )
 static int vustd_statfs (const char *path, struct statvfs *stat)
 #else
 static int vustd_statfs (const char *path, struct statfs *stat)
@@ -222,6 +254,7 @@ static int vustd_create (const char *path, mode_t mode, struct fuse_file_info *f
 	return -ENOSYS;
 }
 
+#if FUSE_USE_VERSION < 30
 static int vustd_ftruncate (const char *path, off_t length, struct fuse_file_info *fileinfo)
 {
 	printkdebug(F,"DEFAULT ftruncate %s\n", path);
@@ -233,11 +266,14 @@ static int vustd_fgetattr (const char *path, struct stat *buf, struct fuse_file_
 	printkdebug(F,"DEFAULT ftruncate %s\n", path);
 	return -ENOSYS;
 }
+#endif
 
 struct fuse_operations vufuse_default_ops = {
 	.getattr = vustd_getattr,
 	.readlink = vustd_readlink,
+#if FUSE_USE_VERSION < 30
 	.getdir = vustd_getdir,
+#endif
 	.mknod = vustd_mknod,
 	.mkdir = vustd_mkdir,
 	.unlink = vustd_unlink,
@@ -248,7 +284,9 @@ struct fuse_operations vufuse_default_ops = {
 	.chmod = vustd_chmod,
 	.chown = vustd_chown,
 	.truncate = vustd_truncate,
+#if FUSE_USE_VERSION < 30
 	.utime = vustd_utime,
+#endif
 	.open = vustd_open,
 	.read = vustd_read,
 	.write = vustd_write,
@@ -263,12 +301,14 @@ struct fuse_operations vufuse_default_ops = {
 	.opendir = vustd_opendir,
 	.releasedir = vustd_releasedir,
 	.fsyncdir = vustd_fsyncdir,
-	
+
 	.init = NULL,
 	.destroy = NULL,
 
 	.access = vustd_access,
 	.create = vustd_create,
+#if FUSE_USE_VERSION < 30
 	.ftruncate = vustd_ftruncate,
 	.fgetattr = vustd_fgetattr,
+#endif
 };
